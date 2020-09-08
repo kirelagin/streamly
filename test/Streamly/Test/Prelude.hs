@@ -651,7 +651,7 @@ transformCombineOpsCommon constr desc eq t = do
     prop (desc <> " scanl'") $ transform (scanl' (flip const) 0) t
                                        (S.scanl' (flip const) 0)
     prop (desc <> " scanlM'") $ transform (scanl' (flip const) 0) t
-                                       (S.scanlM' (\_ a -> return a) 0)
+                                       (S.scanlM' (\_ a -> return a) (return 0))
     prop (desc <> " scanl") $ transform (scanl' (flip const) 0) t
                                        (S.scanl' (flip const) 0)
     prop (desc <> " scanl1'") $ transform (scanl1 (flip const)) t

@@ -687,7 +687,7 @@ checkFoldMStrictness f = do
   readIORef ref `shouldReturn` 1
 
 scanlM'StrictCheck :: IORef Int -> SerialT IO Int -> SerialT IO ()
-scanlM'StrictCheck ref = S.scanlM' (\_ _ -> writeIORef ref 1) ()
+scanlM'StrictCheck ref = S.scanlM' (\_ _ -> writeIORef ref 1) (return ())
 
 checkScanlMStrictness :: (IORef Int -> SerialT IO Int -> SerialT IO ()) -> IO ()
 checkScanlMStrictness f = do
