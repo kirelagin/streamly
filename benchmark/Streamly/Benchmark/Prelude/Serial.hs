@@ -855,6 +855,23 @@ o_1_space_mappingX4 value =
         ]
     ]
 
+{-# INLINE sieveScan #-}
+sieveScan :: Monad m => SerialT m Int -> SerialT m Int
+sieveScan =
+      S.mapMaybe snd
+    . S.scanlM' (\(primes, _) n -> do
+            return $
+                if P.all (\p -> n `mod` p /= 0) primes
+                then (primes ++ [n], Just n)
+                else (primes, Nothing)) ([2], Just 2)
+
+o_n_space_mapping :: Int -> [Benchmark]
+o_n_space_mapping value =
+    [ bgroup "mapping"
+        [ benchIOSink value "naive prime sieve" (S.sum . sieveScan)
+        ]
+    ]
+
 -------------------------------------------------------------------------------
 -- Iteration/looping utilities
 -------------------------------------------------------------------------------
@@ -1657,6 +1674,15 @@ o_1_space_monad value =
         ]
     ]
 
+{-# INLINE sieve #-}
+sieve :: Monad m => SerialT m Int -> SerialT m Int
+sieve s = do
+    r <- lift $ S.uncons s
+    case r of
+        Just (prime, rest) ->
+            prime `S.cons` sieve (S.filter (\n -> n `mod` prime /= 0) rest)
+        Nothing -> S.nil
+
 o_n_space_monad :: Int -> [Benchmark]
 o_n_space_monad value =
     [ bgroup "Monad"
@@ -1668,6 +1694,7 @@ o_n_space_monad value =
             toListM value serially
         , benchIO "(>>=) (sqrt n x sqrt n) (toListSome)" $
             toListSome value serially
+        , benchIO "naive prime sieve" (S.sum . sieve . sourceUnfoldr value)
         ]
     ]
 
@@ -1823,6 +1850,7 @@ main = do
 
             -- transformation
             , o_n_space_traversable size
+            , o_n_space_mapping size
             , o_n_space_grouping size
 
             -- multi-stream
