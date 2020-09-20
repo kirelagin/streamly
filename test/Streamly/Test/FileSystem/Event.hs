@@ -8,19 +8,19 @@
 -- Portability : GHC
 --
 -- Just report all events under the paths provided as arguments
-{-# LANGUAGE CPP #-}
 module Main (main) where
-
-import Control.Monad.IO.Class (MonadIO)
+    
+import Control.Monad.IO.Class (MonadIO)   
 import Data.Function ((&))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Word (Word8)
-import Streamly.Internal.Data.Array.Storable.Foreign (Array)
 import System.Environment (getArgs)
-import Streamly.Prelude (SerialT)
+import Streamly.Prelude (SerialT) 
+import Streamly.Internal.Data.Array.Storable.Foreign (Array)
 
-import qualified Data.List.NonEmpty as NonEmpty
 import qualified Streamly.Unicode.Stream as Unicode
+import qualified Streamly.Internal.Data.Array.Storable.Foreign as Array
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Streamly.Internal.Data.Stream.IsStream as Stream
 #if defined(CABAL_OS_DARWIN)
 import qualified Streamly.Internal.FileSystem.Event.Darwin as Event
@@ -29,42 +29,27 @@ import qualified Streamly.Internal.FileSystem.Event.Linux as Event
 #elif defined(CABAL_OS_WINDOWS)
 import qualified Streamly.Internal.FileSystem.Event.Windows as Event
 #endif
-import qualified Streamly.Internal.Data.Array.Storable.Foreign as Array
 
 -------------------------------------------------------------------------------
 -- Utilities
 -------------------------------------------------------------------------------
-
 toUtf8 :: MonadIO m => String -> m (Array Word8)
 toUtf8 = Array.fromStream . Unicode.encodeUtf8' . Stream.fromList
 
 -------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
-#if defined(CABAL_OS_WINDOWS)
-watchPaths :: [FilePath] -> SerialT IO Event.Event
-watchPaths = Event.watchTrees
-#elif defined(CABAL_OS_DARWIN)
-watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event    
-watchPaths = Event.watchTrees
-#elif defined(CABAL_OS_LINUX)
+#if defined(CABAL_OS_LINUX)
 watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event    
 watchPaths = Event.watchPaths
+#else
+watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event    
+watchPaths = Event.watchTrees
 #endif
 
-
-#if defined(CABAL_OS_WINDOWS)
 main :: IO ()
 main = do
-    args <- getArgs   
-    watchPaths args 
-        & Stream.mapM_ (putStrLn . Event.showEvent)
-
-#else    
-main :: IO ()
-main = do
-    args <- getArgs
+    args <- getArgs 
     paths <- mapM toUtf8 args
     watchPaths (NonEmpty.fromList paths)
         & Stream.mapM_ (putStrLn . Event.showEvent)
-#endif
