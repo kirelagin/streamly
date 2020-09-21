@@ -60,8 +60,7 @@ import Foreign.Storable (peekByteOff)
 import Foreign.Ptr (Ptr, FunPtr, castPtr, nullPtr, nullFunPtr, plusPtr) 
 import Streamly.Prelude (SerialT, parallel)
 import System.Win32.File 
-    (
-    FileNotificationFlag
+    ( FileNotificationFlag
     , LPOVERLAPPED
     , closeHandle
     , createFile
@@ -191,7 +190,7 @@ setAllEvents s =
     . setModifiedSecurity s    
 
 defaultConfig :: Config
-defaultConfig = setAllEvents On $ Config { watchRec = True, createFlags = 0 }
+defaultConfig = setAllEvents On $ Config {watchRec = True, createFlags = 0}
 
 getConfigFlag :: Config -> DWORD
 getConfigFlag Config{..} = createFlags
@@ -222,12 +221,18 @@ type LPOVERLAPPED_COMPLETION_ROUTINE =
 getWatchHandle :: FilePath -> IO (HANDLE, FilePath)
 getWatchHandle dir = do
     h <- createFile dir
-        fILE_LIST_DIRECTORY -- Access mode
-        (fILE_SHARE_READ .|. fILE_SHARE_WRITE) -- Share mode
-        Nothing -- security attributes
-        oPEN_EXISTING -- Create mode, we want to look at an existing directory
-        fILE_FLAG_BACKUP_SEMANTICS -- File attribute, nb NOT using OVERLAPPED since we work synchronously
-        Nothing -- No template file
+        -- | Access mode
+        fILE_LIST_DIRECTORY 
+        -- | Share mode
+        (fILE_SHARE_READ .|. fILE_SHARE_WRITE) 
+        -- | Security attributes
+        Nothing 
+        -- | Create mode, we want to look at an existing directory
+        oPEN_EXISTING 
+        -- | File attribute, NOT using OVERLAPPED since we work synchronously
+        fILE_FLAG_BACKUP_SEMANTICS 
+        -- | No template file
+        Nothing 
     return (h, dir)
     
 -- For reference documentation see:
@@ -237,12 +242,12 @@ getWatchHandle dir = do
 -- 1. https://docs.microsoft.com/en-us/windows/win32/intl/unicode-in-the-windows-api
 -- 2. https://docs.microsoft.com/en-us/windows/win32/intl/unicode
 foreign import ccall safe 
-    "windows.h ReadDirectoryChangesW" c_ReadDirectoryChangesW 
-        :: HANDLE -> LPVOID -> DWORD -> BOOL -> DWORD -> LPDWORD 
-        -> LPOVERLAPPED -> LPOVERLAPPED_COMPLETION_ROUTINE -> IO BOOL
+    "windows.h ReadDirectoryChangesW" c_ReadDirectoryChangesW ::
+               HANDLE -> LPVOID -> DWORD -> BOOL -> DWORD -> LPDWORD 
+            -> LPOVERLAPPED -> LPOVERLAPPED_COMPLETION_ROUTINE -> IO BOOL
 
-readDirectoryChangesW 
-    :: HANDLE -> Ptr FILE_NOTIFY_INFORMATION -> DWORD 
+readDirectoryChangesW ::
+       HANDLE -> Ptr FILE_NOTIFY_INFORMATION -> DWORD 
     -> BOOL -> FileNotificationFlag -> LPDWORD -> IO ()
 
 readDirectoryChangesW h buf bufSize wst f br =
@@ -252,19 +257,20 @@ readDirectoryChangesW h buf bufSize wst f br =
 readChangeEvents :: Ptr FILE_NOTIFY_INFORMATION -> String -> DWORD -> IO [Event]
 readChangeEvents pfni root bytesRet = do  
     fni <- peekFNI pfni
-    let entry = Event{  eventFlags = fniAction fni 
-                      , eventRelPath = fniFileName fni  
-                      , eventRootPath = root
-                      , totalBytes = bytesRet
-                      }  
+    let entry = Event
+            { eventFlags = fniAction fni 
+            , eventRelPath = fniFileName fni  
+            , eventRootPath = root
+            , totalBytes = bytesRet
+            }  
         nioff = fromEnum $ fniNextEntryOffset fni   
-    entries <- if nioff == 0 
-                    then return [] 
-                    else readChangeEvents (pfni `plusPtr` nioff) root bytesRet
+    entries <-  if nioff == 0 
+                then return [] 
+                else readChangeEvents (pfni `plusPtr` nioff) root bytesRet
     return $ entry :entries    
 
-readDirectoryChanges 
-    :: String -> HANDLE -> Bool -> FileNotificationFlag -> IO [Event]
+readDirectoryChanges ::
+    String -> HANDLE -> Bool -> FileNotificationFlag -> IO [Event]
 readDirectoryChanges root h wst mask = do
     let maxBuf = 63 * 1024
     allocaBytes maxBuf $ \buffer -> do
@@ -297,12 +303,12 @@ eventStreamAggr (handle, rootPath, cfg) =  do
     S.concatMap S.fromList $ S.repeatM 
         $ readDirectoryChanges rootPath handle recMode flagMasks
 
-pathsToHandles 
-    :: NonEmpty FilePath -> Config -> SerialT IO (HANDLE, FilePath, Config)
+pathsToHandles ::  
+    NonEmpty FilePath -> Config -> SerialT IO (HANDLE, FilePath, Config)
 pathsToHandles paths cfg = do
     let pathStream = S.fromList (NonEmpty.toList paths)
         st2 = S.mapM getWatchHandle pathStream
-    S.map ( \(h, f) -> (h, f , cfg) ) st2   
+    S.map (\(h, f) -> (h, f, cfg)) st2   
 
 peekFNI :: Ptr FILE_NOTIFY_INFORMATION -> IO FILE_NOTIFY_INFORMATION
 peekFNI buf = do
@@ -310,8 +316,10 @@ peekFNI buf = do
     acti <- peekByteOff buf 4
     fnle <- peekByteOff buf 8
     fnam <- peekCWStringLen
-        (buf `plusPtr` 12, -- start of array
-        fromEnum (fnle :: DWORD) `div` 2 ) -- fnle is the length in *bytes*, and a WCHAR is 2 bytes
+        -- | start of array
+        (buf `plusPtr` 12,
+        -- | fnle is the length in *bytes*, and a WCHAR is 2 bytes
+        fromEnum (fnle :: DWORD) `div` 2) 
     return $ FILE_NOTIFY_INFORMATION neof acti fnam
 
 -------------------------------------------------------------------------------
@@ -328,7 +336,7 @@ utf8ToStringList = NonEmpty.map utf8ToString
 -- /Internal/
 --
 closePathHandleStream :: SerialT IO (HANDLE, FilePath, Config) -> IO ()
-closePathHandleStream = S.mapM_ ( \(h, _, _) -> closeHandle h)
+closePathHandleStream = S.mapM_ (\(h, _, _) -> closeHandle h)
 
 -- | Start monitoring a list of file system paths for file system events with
 -- the supplied configuration operation over the 'defaultConfig'. The
@@ -339,7 +347,10 @@ closePathHandleStream = S.mapM_ ( \(h, _, _) -> closeHandle h)
 --
 -- /Internal/
 --
-watchPathsWith :: (Config -> Config) -> NonEmpty (Array Word8) -> SerialT IO Event
+watchPathsWith :: 
+       (Config -> Config) 
+    -> NonEmpty (Array Word8) 
+    -> SerialT IO Event
 watchPathsWith f paths = do
     let cfg = f $ setRecursiveMode False defaultConfig
         sth = pathsToHandles (utf8ToStringList paths) cfg        
@@ -365,11 +376,15 @@ watchPaths = watchPathsWith id
 --
 -- /Internal/
 --
-watchTreesWith :: (Config -> Config) -> NonEmpty (Array Word8) -> SerialT IO Event   
+watchTreesWith :: 
+       (Config -> Config) 
+    -> NonEmpty (Array Word8) 
+    -> SerialT IO Event   
 watchTreesWith f paths = do
     let cfg = f $ setRecursiveMode True defaultConfig
         sth = pathsToHandles (utf8ToStringList paths) cfg        
-    S.after (closePathHandleStream sth) $ S.concatMapWith parallel eventStreamAggr sth
+    S.after (closePathHandleStream sth) 
+        $ S.concatMapWith parallel eventStreamAggr sth
 
 -- | Like 'watchTreesWith' but uses the 'defaultConfig' options.
 --
