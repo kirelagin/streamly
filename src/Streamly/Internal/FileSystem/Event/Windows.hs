@@ -221,17 +221,17 @@ type LPOVERLAPPED_COMPLETION_ROUTINE =
 getWatchHandle :: FilePath -> IO (HANDLE, FilePath)
 getWatchHandle dir = do
     h <- createFile dir
-        -- | Access mode
+        -- Access mode
         fILE_LIST_DIRECTORY 
-        -- | Share mode
+        -- Share mode
         (fILE_SHARE_READ .|. fILE_SHARE_WRITE) 
-        -- | Security attributes
+        -- Security attributes
         Nothing 
-        -- | Create mode, we want to look at an existing directory
+        -- Create mode, we want to look at an existing directory
         oPEN_EXISTING 
-        -- | File attribute, NOT using OVERLAPPED since we work synchronously
+        -- File attribute, NOT using OVERLAPPED since we work synchronously
         fILE_FLAG_BACKUP_SEMANTICS 
-        -- | No template file
+        -- No template file
         Nothing 
     return (h, dir)
     
@@ -316,9 +316,9 @@ peekFNI buf = do
     acti <- peekByteOff buf 4
     fnle <- peekByteOff buf 8
     fnam <- peekCWStringLen
-        -- | start of array
+        -- start of array
         (buf `plusPtr` 12,
-        -- | fnle is the length in *bytes*, and a WCHAR is 2 bytes
+        -- fnle is the length in *bytes*, and a WCHAR is 2 bytes
         fromEnum (fnle :: DWORD) `div` 2) 
     return $ FILE_NOTIFY_INFORMATION neof acti fnam
 
