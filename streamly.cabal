@@ -462,7 +462,6 @@ library
                      , Streamly.Internal.Data.Stream.Enumeration
                      , Streamly.Internal.Data.Stream.Prelude
                      
-
                      -- Higher level streams
                      , Streamly.Internal.Data.Stream.IsStream
                      , Streamly.Internal.Data.Stream.SVar

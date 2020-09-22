@@ -1,4 +1,13 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
+-- |
+-- Module      : Streamly.Internal.FileSystem.Event.Windows
+-- Copyright   : (c) 2020 Composewell Technologies
+--
+-- License     : BSD3
+-- Maintainer  : streamly@composewell.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- Just report all events under the paths provided as arguments
 
 module Streamly.Internal.FileSystem.Event.Windows
     ( 
@@ -50,6 +59,7 @@ module Streamly.Internal.FileSystem.Event.Windows
     ) 
 where
 
+import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.Bits ((.|.), (.&.), complement)   
 import Data.Functor.Identity (runIdentity)      
 import Data.List.NonEmpty (NonEmpty)
@@ -254,6 +264,18 @@ readDirectoryChangesW h buf bufSize wst f br =
     failIfFalse_ "ReadDirectoryChangesW" $ c_ReadDirectoryChangesW h (castPtr buf) 
     bufSize wst f br nullPtr nullFunPtr  
 
+peekFNI :: Ptr FILE_NOTIFY_INFORMATION -> IO FILE_NOTIFY_INFORMATION
+peekFNI buf = do
+    neof <- peekByteOff buf 0
+    acti <- peekByteOff buf 4
+    fnle <- peekByteOff buf 8
+    fnam <- peekCWStringLen
+        -- start of array
+        (buf `plusPtr` 12,
+        -- fnle is the length in *bytes*, and a WCHAR is 2 bytes
+        fromEnum (fnle :: DWORD) `div` 2) 
+    return $ FILE_NOTIFY_INFORMATION neof acti fnam
+
 readChangeEvents :: Ptr FILE_NOTIFY_INFORMATION -> String -> DWORD -> IO [Event]
 readChangeEvents pfni root bytesRet = do  
     fni <- peekFNI pfni
@@ -310,18 +332,6 @@ pathsToHandles paths cfg = do
         st2 = S.mapM getWatchHandle pathStream
     S.map (\(h, f) -> (h, f, cfg)) st2   
 
-peekFNI :: Ptr FILE_NOTIFY_INFORMATION -> IO FILE_NOTIFY_INFORMATION
-peekFNI buf = do
-    neof <- peekByteOff buf 0
-    acti <- peekByteOff buf 4
-    fnle <- peekByteOff buf 8
-    fnam <- peekCWStringLen
-        -- start of array
-        (buf `plusPtr` 12,
-        -- fnle is the length in *bytes*, and a WCHAR is 2 bytes
-        fromEnum (fnle :: DWORD) `div` 2) 
-    return $ FILE_NOTIFY_INFORMATION neof acti fnam
-
 -------------------------------------------------------------------------------
 -- Utilities
 -------------------------------------------------------------------------------
@@ -351,11 +361,14 @@ watchPathsWith ::
        (Config -> Config) 
     -> NonEmpty (Array Word8) 
     -> SerialT IO Event
-watchPathsWith f paths = do
-    let cfg = f $ setRecursiveMode False defaultConfig
-        sth = pathsToHandles (utf8ToStringList paths) cfg        
-    S.after (closePathHandleStream sth) 
-        $ S.concatMapWith parallel eventStreamAggr sth
+watchPathsWith f paths =
+    S.bracket before after (S.concatMapWith parallel eventStreamAggr)
+
+    where
+
+    before = return $ pathsToHandles (utf8ToStringList paths) 
+        (f $ setRecursiveMode False defaultConfig)
+    after = liftIO . closePathHandleStream
 
 -- | Like 'watchPathsWith' but uses the 'defaultConfig' options.
 --
@@ -380,11 +393,14 @@ watchTreesWith ::
        (Config -> Config) 
     -> NonEmpty (Array Word8) 
     -> SerialT IO Event   
-watchTreesWith f paths = do
-    let cfg = f $ setRecursiveMode True defaultConfig
-        sth = pathsToHandles (utf8ToStringList paths) cfg        
-    S.after (closePathHandleStream sth) 
-        $ S.concatMapWith parallel eventStreamAggr sth
+watchTreesWith f paths = 
+     S.bracket before after (S.concatMapWith parallel eventStreamAggr)
+
+    where
+
+    before = return $ pathsToHandles (utf8ToStringList paths) 
+        (f $ setRecursiveMode True defaultConfig)
+    after = liftIO . closePathHandleStream
 
 -- | Like 'watchTreesWith' but uses the 'defaultConfig' options.
 --
