@@ -28,6 +28,8 @@ import qualified Streamly.Internal.FileSystem.Event.Darwin as Event
 import qualified Streamly.Internal.FileSystem.Event.Linux as Event
 #elif defined(CABAL_OS_WINDOWS)
 import qualified Streamly.Internal.FileSystem.Event.Windows as Event
+#else
+#error "FS Events not supported on this platform
 #endif
 
 -------------------------------------------------------------------------------
@@ -39,11 +41,10 @@ toUtf8 = Array.fromStream . Unicode.encodeUtf8' . Stream.fromList
 -------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
-#if defined(CABAL_OS_LINUX)
-watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event    
+watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event
+#if defined(CABAL_OS_LINUX)    
 watchPaths = Event.watchPaths
-#else
-watchPaths :: NonEmpty (Array Word8) -> SerialT IO Event.Event    
+#else    
 watchPaths = Event.watchTrees
 #endif
 
