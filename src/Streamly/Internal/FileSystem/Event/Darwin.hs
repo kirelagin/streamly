@@ -1023,7 +1023,7 @@ module Streamly.Internal.FileSystem.Event.Darwin () where
 #warning "Autoconf did not find the definition \
 kFSEventStreamCreateFlagFileEvents in Darwin header files.\
 Do you have Cocoa framework header files installed?\
-Not compiling the Streamly.Internal.FileSystem.Event module. \
+Not compiling the Streamly.Internal.FileSystem.Event.Darwin module. \
 Programs depending on this module may not compile. \
 Check if HAVE_DECL_KFSEVENTSTREAMCREATEFLAGFILEEVENTS is defined in config.h \
 generated from src/config.h.in"
