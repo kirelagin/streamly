@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedLists #-}
 
-module Main (main) where
+module Streamly.Test.Data.List (main) where
 
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Semigroup ((<>))
