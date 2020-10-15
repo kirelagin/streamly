@@ -5,10 +5,10 @@
 # nix-shell --argstr c2nix "--flag examples"
 #
 # To build the chart executable for running bench.sh use:
-# nix-shell --argstr c2nix "--flag dev" --run "cabal build chart"
+# nix-shell --argstr c2nix "--flag dev" --run "cabal build chart --flag dev"
 {
   nixpkgs ?
-    import (builtins.fetchTarball https://github.com/composewell/nixpkgs/archive/f0ec167983f.tar.gz)
+    import (builtins.fetchTarball https://github.com/composewell/nixpkgs/archive/01dd2b4e738.tar.gz)
         # fusion-plugin is marked a broken
         { config.allowBroken = true;}
 , compiler ? "default"
@@ -67,7 +67,6 @@ let haskellPackages =
         # some dependencies of hoogle fail to build with quickcheck-2.14
         # We should use hoogle as external tool instead of building it here
         # withHoogle = true;
-        withBenchmarks = true;
         doBenchmark = true;
         # On macOs cabal2nix does not seem to generate a Cocoa
         # framework dependency.
